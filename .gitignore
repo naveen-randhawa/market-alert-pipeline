@@ -1,0 +1,14 @@
+# Local API credentials & secrets
+config.py
+
+# Local SQLite databases
+*.db
+market_data.db
+
+# Python cache & environment artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+venv/
+env/
