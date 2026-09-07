@@ -19,7 +19,7 @@ WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", DEFAULT_WEBHOOK_URL)
 
 TICKERS = ["AAPL", "MSFT", "NVDA"]
 DB_NAME = "market_data.db"
-VOLATILITY_THRESHOLD_PCT = 0.0  # Set back to 1.0 or 1.5 once tested
+VOLATILITY_THRESHOLD_PCT = 1.5  # Test at 0.0, then set 1.5 once tested
 
 
 def extract_data(batch_time):
