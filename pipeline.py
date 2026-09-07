@@ -110,7 +110,7 @@ def run_volatility_detection_and_alert(batch_time):
 
 
 def send_discord_alert(anomalies_df):
-    """Send a structured, professional embed card to Discord."""
+    """Send a sectioned embed card to Discord."""
     fields = []
     for _, row in anomalies_df.iterrows():
         is_positive = row["change_percent"] >= 0
@@ -141,7 +141,7 @@ def send_discord_alert(anomalies_df):
                 "color": 3447003,  # Sleek dark blue/slate accent bar
                 "fields": fields,
                 "footer": {
-                    "text": f"Batch Ingestion • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    "text": f"Batch Run: Automated Production • Cloud Runner (Ubuntu) • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
                 }
             }
         ]
