@@ -10,6 +10,14 @@ An automated data pipeline that extracts real-time equity market data, normalize
 3. **Analyze & Alert:** Executes vectorized SQL evaluations over the latest ingestion batch to flag volatility spikes ($|\Delta| \ge \text{threshold}$) and dispatches structured webhook alerts.
 4. **CI/CD Automation:** Scheduled via GitHub Actions cron triggers across active market trading sessions (pre-market, intraday, and power hour).
 
+```mermaid
+graph LR
+    A[Alpha Vantage REST API] -->|JSON Payloads| B(Extract & Transform)
+    B -->|Clean Records| C[(SQLite Persistence)]
+    C -->|SQL Volatility Filter| D{Threshold Met?}
+    D -->|Yes: |Δ| ≥ 1.5%| E[Discord Webhook Embed]
+    D -->|No: Nominal| F[Silent Batch Log]
+
 ## Tech Stack
 
 * **Language:** Python 3.11+
