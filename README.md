@@ -1,4 +1,5 @@
 # Real-Time Equity Surveillance & ETL Pipeline
+![Pipeline Status](https://github.com/naveen-randhawa/market-alert-pipeline/actions/workflows/market_pipeline.yml/badge.svg)
 
 An automated data pipeline that extracts real-time equity market data, normalizes relational structures into SQLite, evaluates price volatility metrics against configured thresholds, and delivers rich embed alerts via Discord webhooks.
 
