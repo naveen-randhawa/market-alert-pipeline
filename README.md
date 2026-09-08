@@ -15,8 +15,9 @@ graph LR
     A[Alpha Vantage REST API] -->|JSON Payloads| B(Extract & Transform)
     B -->|Clean Records| C[(SQLite Persistence)]
     C -->|SQL Volatility Filter| D{Threshold Met?}
-    D -->|Yes: |Δ| ≥ 1.5%| E[Discord Webhook Embed]
+    D -->|"Yes: |Δ| ≥ 1.0%"| E[Discord Webhook Embed]
     D -->|No: Nominal| F[Silent Batch Log]
+```
 
 ## Tech Stack
 
