@@ -2,7 +2,10 @@ name: Financial Pipeline Scheduler
 
 on:
   schedule:
-    - cron: '55 13 * * 1-5'
+    # 15-minute verification window: 3:10 PM CDT (20:10 UTC)
+    - cron: '10 20 * * *'
+    # Regular market windows
+    - cron: '45 13 * * 1-5'
     - cron: '30 15 * * 1-5'
     - cron: '0 18 * * 1-5'
     - cron: '45 19 * * 1-5'
