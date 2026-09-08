@@ -2,8 +2,7 @@ name: Financial Pipeline Scheduler
 
 on:
   schedule:
-    # Mon-Fri: 9:45 AM, 11:30 AM, 2:00 PM, 3:45 PM Eastern
-    - cron: '45 13 * * 1-5'
+    - cron: '55 13 * * 1-5'
     - cron: '30 15 * * 1-5'
     - cron: '0 18 * * 1-5'
     - cron: '45 19 * * 1-5'
