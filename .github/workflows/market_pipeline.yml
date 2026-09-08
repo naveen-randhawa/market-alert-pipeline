@@ -2,9 +2,7 @@ name: Financial Pipeline Scheduler
 
 on:
   schedule:
-    # Dedicated verification trigger at 11:50 AM CDT / 16:50 UTC
-    - cron: '50 16 * * *'
-    # Regular market windows
+    # Mon-Fri: 9:45 AM, 11:30 AM, 2:00 PM, 3:45 PM Eastern
     - cron: '45 13 * * 1-5'
     - cron: '30 15 * * 1-5'
     - cron: '0 18 * * 1-5'
