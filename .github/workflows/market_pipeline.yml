@@ -2,8 +2,8 @@ name: Financial Pipeline Scheduler
 
 on:
   schedule:
-    # 4:35 PM EDT (20:35 UTC) Mon-Fri: post-market close
-    - cron: '35 20 * * 1-5'
+    # 5:05 PM CDT (22:05 UTC) Mon-Fri
+    - cron: '5 22 * * 1-5'
   workflow_dispatch:
 
 jobs:
