@@ -91,19 +91,32 @@ def load_to_sqlite(df):
 def run_volatility_detection_and_alert(batch_time):
     """Query the database for movements within the current batch and alert Discord."""
     conn = sqlite3.connect(DB_NAME)
-    query = """
-    SELECT symbol, price, price_change, change_percent, volume, trading_day
-    FROM equity_quotes
-    WHERE ingested_at = ?
-      AND ABS(change_percent) >= ?
-    """
-    anomalies = pd.read_sql_query(
-        query, conn, params=(batch_time, VOLATILITY_THRESHOLD_PCT)
-    )
+    
+    # 13:00 - 14:00 UTC is 8:00 - 9:00 AM CDT (Opening Bell Window)
+    current_utc_hour = datetime.now(timezone.utc).hour
+    is_morning_open = (current_utc_hour == 13)
+
+    if is_morning_open:
+        print("[ALERT] Morning Open session: querying full baseline digest...")
+        query = """
+        SELECT symbol, price, price_change, change_percent, volume, trading_day
+        FROM equity_quotes
+        WHERE ingested_at = ?
+        """
+        anomalies = pd.read_sql_query(query, conn, params=(batch_time,))
+    else:
+        query = """
+        SELECT symbol, price, price_change, change_percent, volume, trading_day
+        FROM equity_quotes
+        WHERE ingested_at = ?
+          AND ABS(change_percent) >= ?
+        """
+        anomalies = pd.read_sql_query(query, conn, params=(batch_time, VOLATILITY_THRESHOLD_PCT))
+        
     conn.close()
 
     if not anomalies.empty:
-        print(f"[ALERT] {len(anomalies)} volatility events found. Sending to Discord...")
+        print(f"[ALERT] {len(anomalies)} record(s) found. Sending to Discord...")
         send_discord_alert(anomalies)
     else:
         print(f"[MONITOR] Nominal market conditions. No swings >= {VOLATILITY_THRESHOLD_PCT}%.")
