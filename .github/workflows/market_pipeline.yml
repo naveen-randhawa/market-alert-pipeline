@@ -2,10 +2,8 @@ name: Financial Pipeline Scheduler
 
 on:
   schedule:
-    - cron: '48 13 * * 1-5'
-    - cron: '34 15 * * 1-5'
-    - cron: '3 18 * * 1-5'
-    - cron: '47 19 * * 1-5'
+    # 4:35 PM EDT (20:35 UTC) Mon-Fri: post-market close
+    - cron: '35 20 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -31,3 +29,10 @@ jobs:
           ALPHA_VANTAGE_KEY: ${{ secrets.ALPHA_VANTAGE_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python pipeline.py
+
+      - name: Upload Daily Market Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-market-reports
+          path: reports/
+          retention-days: 14

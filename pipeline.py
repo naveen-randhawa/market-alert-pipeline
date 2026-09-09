@@ -19,7 +19,6 @@ WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", DEFAULT_WEBHOOK_URL)
 
 TICKERS = ["AAPL", "MSFT", "NVDA"]
 DB_NAME = "market_data.db"
-VOLATILITY_THRESHOLD_PCT = 1.5  # Test at 0.0, then set 1.5 once tested
 
 
 def extract_data(batch_time):
@@ -40,9 +39,7 @@ def extract_data(batch_time):
             data = response.json()
 
             if "Note" in data:
-                print(
-                    f"[WARN] Alpha Vantage rate limit reached: {data['Note']}"
-                )
+                print(f"[WARN] Alpha Vantage rate limit reached: {data['Note']}")
                 break
 
             quote = data.get("Global Quote", {})
@@ -58,17 +55,15 @@ def extract_data(batch_time):
             volume = int(quote.get("06. volume", 0))
             trading_day = quote.get("07. latest trading day", "")
 
-            records.append(
-                {
-                    "symbol": symbol,
-                    "price": price,
-                    "price_change": change,
-                    "change_percent": change_percent,
-                    "volume": volume,
-                    "trading_day": trading_day,
-                    "ingested_at": batch_time,
-                }
-            )
+            records.append({
+                "symbol": symbol,
+                "price": price,
+                "price_change": change,
+                "change_percent": change_percent,
+                "volume": volume,
+                "trading_day": trading_day,
+                "ingested_at": batch_time,
+            })
 
             # Politeness delay to prevent free-tier API throttling
             time.sleep(12)
@@ -88,44 +83,34 @@ def load_to_sqlite(df):
     print(f"[LOAD] Successfully saved {len(df)} records into {DB_NAME}.")
 
 
-def run_volatility_detection_and_alert(batch_time):
-    """Query the database for movements within the current batch and alert Discord."""
+def export_eod_summary(batch_time):
+    """Generate a daily CSV report file for GitHub Actions artifact retention."""
+    os.makedirs("reports", exist_ok=True)
     conn = sqlite3.connect(DB_NAME)
     
-    # 13:00 - 14:00 UTC is 8:00 - 9:00 AM CDT (Opening Bell Window)
-    current_utc_hour = datetime.now(timezone.utc).hour
-    is_morning_open = (current_utc_hour == 13)
-
-    if is_morning_open:
-        print("[ALERT] Morning Open session: querying full baseline digest...")
-        query = """
-        SELECT symbol, price, price_change, change_percent, volume, trading_day
-        FROM equity_quotes
-        WHERE ingested_at = ?
-        """
-        anomalies = pd.read_sql_query(query, conn, params=(batch_time,))
-    else:
-        query = """
-        SELECT symbol, price, price_change, change_percent, volume, trading_day
-        FROM equity_quotes
-        WHERE ingested_at = ?
-          AND ABS(change_percent) >= ?
-        """
-        anomalies = pd.read_sql_query(query, conn, params=(batch_time, VOLATILITY_THRESHOLD_PCT))
-        
+    query = """
+    SELECT symbol, price, price_change, change_percent, volume, trading_day
+    FROM equity_quotes
+    WHERE ingested_at = ?
+    ORDER BY change_percent DESC
+    """
+    df = pd.read_sql_query(query, conn, params=(batch_time,))
     conn.close()
 
-    if not anomalies.empty:
-        print(f"[ALERT] {len(anomalies)} record(s) found. Sending to Discord...")
-        send_discord_alert(anomalies)
-    else:
-        print(f"[MONITOR] Nominal market conditions. No swings >= {VOLATILITY_THRESHOLD_PCT}%.")
+    if df.empty:
+        return None
+
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    csv_path = f"reports/market_summary_{date_str}.csv"
+    df.to_csv(csv_path, index=False)
+    print(f"[REPORT] Daily session report exported to {csv_path}")
+    return csv_path
 
 
-def send_discord_alert(anomalies_df):
-    """Send a sectioned embed card to Discord."""
+def send_discord_eod_digest(summary_df):
+    """Send an End-of-Day market closing summary card to Discord."""
     fields = []
-    for _, row in anomalies_df.iterrows():
+    for _, row in summary_df.iterrows():
         is_positive = row["change_percent"] >= 0
         direction_icon = "🟢" if is_positive else "🔴"
         sign = "+" if is_positive else ""
@@ -133,28 +118,27 @@ def send_discord_alert(anomalies_df):
         fields.append({
             "name": f"{direction_icon} {row['symbol']}",
             "value": (
-                f"**Price:** ${row['price']:,.2f}\n"
+                f"**Close:** ${row['price']:,.2f}\n"
                 f"**Change:** `{sign}{row['change_percent']:.2f}%` (${sign}{row['price_change']:.2f})\n"
                 f"**Volume:** {row['volume']:,}"
             ),
-            "inline": True  # Places stocks side-by-side in columns
+            "inline": True
         })
 
-    # Discord rich embed payload
     payload = {
         "username": "Finn Bot",
         "avatar_url": "https://cdn-icons-png.flaticon.com/512/2784/2784403.png",
         "embeds": [
             {
-                "title": "Market Volatility Update",
+                "title": "📊 End-of-Day Market Digest",
                 "description": (
-                    f"**Trigger:** Daily price movement |Δ| ≥ `{VOLATILITY_THRESHOLD_PCT}%`\n"
-                    f"**Source:** Alpha Vantage Global Quote Engine"
+                    "**Session Close Summary**\n"
+                    "Alpha Vantage Global Quote Engine • SQLite ETL Pipeline"
                 ),
-                "color": 3447003,  # Sleek dark blue/slate accent bar
+                "color": 3447003,
                 "fields": fields,
                 "footer": {
-                    "text": f"Batch Run: Automated Production • Cloud Runner (Ubuntu) • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    "text": f"Batch Run: EOD Production • Cloud Runner (Ubuntu) • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
                 }
             }
         ]
@@ -163,7 +147,7 @@ def send_discord_alert(anomalies_df):
     try:
         res = requests.post(WEBHOOK_URL, json=payload, timeout=10)
         if res.status_code in [200, 204]:
-            print("[DISPATCH] Discord rich embed alert delivered successfully!")
+            print("[DISPATCH] Discord EOD digest delivered successfully!")
         else:
             print(f"[ERROR] Discord webhook rejected with status: {res.status_code}")
     except Exception as e:
@@ -171,13 +155,14 @@ def send_discord_alert(anomalies_df):
 
 
 if __name__ == "__main__":
-    print("[START] Running financial ETL pipeline...")
+    print("[START] Running End-of-Day financial ETL pipeline...")
     current_batch = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     
     df = extract_data(current_batch)
     if not df.empty:
         load_to_sqlite(df)
-        run_volatility_detection_and_alert(current_batch)
+        send_discord_eod_digest(df)
+        export_eod_summary(current_batch)
     else:
         print("[WARN] No records ingested. Check your API key or network.")
     print("[FINISH] Pipeline completed.")
